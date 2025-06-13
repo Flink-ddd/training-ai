@@ -79,3 +79,12 @@
 → Surprise
 "I thought I was just going out for dinner, but then he got down on one knee and proposed!"
 → Surprise
+
+
+
+
+conda activate sentiment-analysis
+
+/opt/anaconda3/envs/sentiment-analysis/bin/python advanced_sentiment_analysis.py
+
+
