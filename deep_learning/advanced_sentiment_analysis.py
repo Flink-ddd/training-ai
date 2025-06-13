@@ -24,24 +24,24 @@ def analyze_sentiment(text):
 
 # Generate a probability distribution bar chart
 def plot_probabilities(probabilities):
-    labels, scores = list(probabilities.keys()), list(probabilities.values())
+    top_k = 15
+    labels, scores = zip(*sorted(probabilities.items(), key=lambda x: x[1], reverse=True)[:top_k])
 
-    # Create a horizontal bar chart
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(8, max(4, len(labels) * 0.4)))  # 根据类别数量动态调节图高度
     plt.barh(labels, scores, color="skyblue")
     plt.xlabel("Probability")
     plt.title("Emotion Classification Probabilities")
-    plt.xlim(0, 1)  # Normalize the probability range to 0-1
-    plt.gca().invert_yaxis()  # Display the highest probability emotion at the top
+    plt.xlim(0, 1)
+    plt.gca().invert_yaxis()  # 高概率在上面
 
-    # Save the plot as a temporary file
+    plt.tight_layout()  # 自动调整间距，避免重叠
+
     temp_dir = tempfile.gettempdir()
     image_path = os.path.join(temp_dir, "emotion_probabilities.png")
-
     plt.savefig(image_path)
     plt.close()
-
     return image_path
+
 
 # Gradio interface function
 def gradio_sentiment_analysis(text):
