@@ -1,221 +1,227 @@
-# Import libraries  
 import numpy as np  
 import matplotlib.pyplot as plt  
-from sklearn.datasets import load_iris  
-from sklearn.tree import DecisionTreeClassifier, export_graphviz  
-import graphviz  
+from scipy.optimize import fsolve  
+import pandas as pd  
+from sklearn.metrics import mean_squared_error as sk_mse  
 
-# Load dataset  
-iris = load_iris()  
-X = iris.data  # Features  
-y = iris.target  # Labels  
-feature_names = iris.feature_names  
-class_names = iris.target_names  
-
-# Print dataset details  
-print("Dataset shape:", X.shape)  
-print("Feature names:", feature_names)  
-print("Class names:", class_names) 
-
-
-
-# Create a grid of 2D feature plots  
-plt.figure(figsize=(12, 10))
-plot_index = 1
-for i in range(4):
-    for j in range(4):
-        if i == j:
-            continue
-        plt.subplot(4, 3, plot_index)  # 4行3列 = 12格
-        plt.scatter(X[:, i], X[:, j], c=y, cmap='viridis', edgecolor='k')
-        plt.xlabel(feature_names[i])
-        plt.ylabel(feature_names[j])
-        plot_index += 1
-plt.tight_layout()
-plt.show()
-
-
-
-# Split data (for simplicity, use all data for training initially)  
-clf = DecisionTreeClassifier(min_samples_leaf=10, random_state=42)  
-clf.fit(X, y)  
-
-# Evaluate on training data (note: this is optimistic)  
-train_pred = clf.predict(X)  
-train_accuracy = np.mean(train_pred == y)  
-print(f"Training Accuracy: {train_accuracy:.1%}")  # Output: ~96.0% 
-
-
-
-# Export the tree to DOT format and render  
-export_graphviz(  
-    clf,  
-    out_file='iris_tree.dot',  
-    feature_names=feature_names,  
-    class_names=class_names,  
-    filled=True,  
-    rounded=True  
-)  
-with open('iris_tree.dot') as f:  
-    dot_graph = f.read()  
-graphviz.Source(dot_graph)  
-
-
-
-from sklearn.model_selection import cross_val_score  
-
-# 5-fold cross-validation  
-scores = cross_val_score(clf, X, y, cv=5, scoring='accuracy')  
-print(f"Cross-validation scores: {scores}")  
-print(f"Mean CV Accuracy: {scores.mean():.1%}")  # Output: ~94.7%  
-
-
-
-from sklearn.datasets import fetch_openml  
-
-# Load the Seeds dataset
-seeds = fetch_openml(name='seeds', version=1, as_frame=False)  
-X_seeds, y_seeds = seeds.data, seeds.target.astype(int)  
-y_seeds -= 1  # Convert to 0-based labels  
-feature_names_seeds = seeds.feature_names  
-
-# 打印部分数据和信息来验证
-print("Dataset shape:", X_seeds.shape)
-print("Feature names:", feature_names_seeds)
-print("First 5 samples:\n", X_seeds[:5])
-print("First 5 labels:", y_seeds[:5])
-
-
-
-
-from sklearn.preprocessing import StandardScaler  
-from sklearn.pipeline import Pipeline  
-from sklearn.neighbors import KNeighborsClassifier  
-from sklearn.datasets import load_iris  
-from sklearn.model_selection import train_test_split  
-from sklearn.metrics import accuracy_score, classification_report
-
-# Load example dataset (Iris)
-iris = load_iris()
-X, y = iris.data, iris.target
-
-# Split into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-# Create pipeline: scaling + KNN
-clf_knn = Pipeline([
-    ('scaler', StandardScaler()),
-    ('knn', KNeighborsClassifier(n_neighbors=3))
-])
-
-# Train the model
-clf_knn.fit(X_train, y_train)
-
-# Make predictions
-y_pred = clf_knn.predict(X_test)
-
-# Evaluate performance
-print("Test Accuracy:", accuracy_score(y_test, y_pred))
-print("\nClassification Report:\n", classification_report(y_test, y_pred, target_names=iris.target_names))
-
-
-
-
-
-from sklearn.neighbors import KNeighborsClassifier  
-from sklearn.model_selection import KFold  
-
-# 5-fold cross-validation  
-kf = KFold(n_splits=5, shuffle=True, random_state=42)  
-accuracies = []  
-for train_idx, test_idx in kf.split(X_seeds):  
-    X_train, X_test = X_seeds[train_idx], X_seeds[test_idx]  
-    y_train, y_test = y_seeds[train_idx], y_seeds[test_idx]  
-    clf_knn.fit(X_train, y_train)  
-    acc = clf_knn.score(X_test, y_test)  
-    accuracies.append(acc)  
-print(f"KNN CV Accuracies: {np.round(accuracies, 3)}")  
-print(f"Mean Accuracy: {np.mean(accuracies):.1%}")  # Output: ~86.0%  
-
-
-
-
-
-# Select two features: area (0) and compactness (2)  
-X_2d = X_seeds[:, [0, 2]]  
-clf_knn_2d = KNeighborsClassifier(n_neighbors=3)  
-clf_knn_2d.fit(X_2d, y_seeds)  
-
-# Create meshgrid for plotting  
-x_min, x_max = X_2d[:, 0].min() - 1, X_2d[:, 0].max() + 1  
-y_min, y_max = X_2d[:, 1].min() - 1, X_2d[:, 1].max() + 1  
-xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),  
-                     np.linspace(y_min, y_max, 100))  
-Z = clf_knn_2d.predict(np.c_[xx.ravel(), yy.ravel()])  
-Z = Z.reshape(xx.shape)  
-
-# Plot decision boundary and data points  
-plt.contourf(xx, yy, Z, alpha=0.8, cmap='viridis')  
-plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y_seeds, cmap='tab10', edgecolor='k')  
-plt.xlabel(feature_names_seeds[0])  
-plt.ylabel(feature_names_seeds[2])  
-plt.title("KNN Decision Boundary (2D Features)")  
-plt.show() 
-
-
-
-
-
-
-from sklearn.ensemble import RandomForestClassifier  
-
-# Build a random forest with 100 trees  
-rf = RandomForestClassifier(n_estimators=100, random_state=42)  
-rf_scores = cross_val_score(rf, X_seeds, y_seeds, cv=5, scoring='accuracy')  
-print(f"Random Forest CV Accuracy: {rf_scores.mean():.1%}")  # Output: ~88.0%  
-
-
-
-
-
-
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-import numpy as np
-import matplotlib.pyplot as plt
+np.random.seed(42)
 
 # Load data
-iris = load_iris()
-X = iris.data
-y = iris.target
-feature_names_seeds = iris.feature_names
+data = np.genfromtxt("web_traffic.tsv", delimiter="\t")  
+df = pd.DataFrame(data, columns=['Hour', 'Hits'])  
+print("Basic Data Information:")  
+df.info()  
+rows, columns = data.shape  
+print(f"Dataset contains {rows} samples and {columns} features.")  
+print("First 10 rows of data:")  
+print(df.head(10).to_string())  
 
-# Train/test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+x = data[:, 0]  
+y = data[:, 1]  
+nan_mask = np.isnan(y)  
+nan_count = np.sum(nan_mask)  
+print(f"Found {nan_count} missing values, accounting for {nan_count/len(y):.2%} of the data.")  
 
-# Initialize and train model
-rf = RandomForestClassifier(n_estimators=100, random_state=42)
-rf.fit(X_train, y_train)
+if nan_count > 0:  
+    plt.figure(figsize=(12, 3))  
+    plt.plot(nan_mask, 'r.', label='Missing Values')  
+    plt.title('Missing Value Distribution')  
+    plt.xlabel('Sample Index')  
+    plt.legend()  
+    plt.show()  
 
-# Plot feature importances
-importances = rf.feature_importances_
-indices = np.argsort(importances)
-plt.figure(figsize=(8, 4))
-plt.title("Feature Importances")
-plt.barh(range(len(indices)), importances[indices], color='b', align='center')
-plt.yticks(range(len(indices)), [feature_names_seeds[i] for i in indices])
-plt.xlabel('Relative Importance')
-plt.tight_layout()
+x = x[~nan_mask]  
+y = y[~nan_mask]  
+print(f"Shape after filtering: {x.shape}")  
+
+def plot_web_traffic(x, y, models=None, title="Web Traffic Over the Last Month", xlim=None, show_confidence=False):  
+    plt.figure(figsize=(12, 6))  
+    plt.scatter(x, y, s=10, alpha=0.6, label="Raw Data")  
+    plt.title(title)  
+    plt.xlabel("Time (Weeks)")  
+    plt.ylabel("Hits/Hour")  
+    weeks = np.arange(0, 5)  
+    plt.xticks([w*7*24 for w in weeks], [f"Week {w+1}" for w in weeks])  
+    if xlim: plt.xlim(xlim)  
+    if models:  
+        colors = ['g', 'k', 'b', 'm', 'r', 'c', 'y']  
+        linestyles = ['-', '-.', '--', ':', '-', '--', '-.']  
+        mx = np.linspace(0, x[-1]*1.2 if not xlim else xlim[1], 1000)  
+        for i, model in enumerate(models):  
+            label = f"{getattr(model, 'order', f'Model {i+1}')}"  
+            plt.plot(mx, model(mx), linestyle=linestyles[i], linewidth=2, c=colors[i], label=label)  
+            if show_confidence and i == 0:  
+                error = np.std(y - model(x))  
+                plt.fill_between(mx, model(mx) - 2*error, model(mx) + 2*error, color=colors[i], alpha=0.2, label='95% Confidence Interval')  
+    plt.legend(loc="upper left")  
+    plt.grid(True)  
+    plt.tight_layout()  
+    plt.show()  
+
+plot_web_traffic(x, y)
+
+def error(f, x, y):  
+    return np.sqrt(np.mean((f(x) - y) ** 2))  
+
+def root_mean_squared_error(f, x, y):  
+    return np.sqrt(np.mean((f(x) - y) ** 2))  
+
+def mean_absolute_percentage_error(f, x, y):  
+    return np.mean(np.abs((y - f(x)) / y)) * 100  
+
+def print_model_metrics(model, x, y, model_name="Model"):  
+    mse = np.mean((model(x) - y)**2)  
+    rmse = root_mean_squared_error(model, x, y)  
+    mape = mean_absolute_percentage_error(model, x, y)  
+    print(f"{model_name} Evaluation Metrics:")  
+    print(f"  MSE: {mse:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%")  
+    return mse, rmse, mape  
+
+degree = 1  
+f1 = np.poly1d(np.polyfit(x, y, degree))  
+error1 = error(f1, x, y)  
+print(f"{degree}st-degree polynomial error: {error1:.2f}")  
+mse1, rmse1, mape1 = print_model_metrics(f1, x, y, f"{degree}st-Degree Polynomial")  
+plot_web_traffic(x, y, [f1], title=f"{degree}st-Degree Polynomial Fit")  
+
+degrees = [2, 3, 5, 10, 20]  
+models = [f1]  
+errors = [error1]  
+metrics = [(mse1, rmse1, mape1)]  
+for degree in degrees:  
+    model = np.poly1d(np.polyfit(x, y, degree))  
+    models.append(model)  
+    err = error(model, x, y)  
+    errors.append(err)  
+    m, r, p = print_model_metrics(model, x, y, f"{degree}th-Degree Polynomial")  
+    metrics.append((m, r, p))  
+    print("-" * 40)  
+
+plot_web_traffic(x, y, models, title="Comparison of Polynomial Models by Degree")  
+
+plt.figure(figsize=(10, 6))  
+plt.plot([1] + degrees, errors, 'o-')  
+plt.title('Error Comparison by Polynomial Degree')  
+plt.xlabel('Polynomial Degree')  
+plt.ylabel('Error Value')  
+plt.grid(True)  
+plt.xticks([1] + degrees)  
+plt.show()  
+
+print("\nModel Performance Comparison:")  
+print("Degree\tMSE\t\tRMSE\t\tMAPE(%)")  
+print("-" * 50)  
+for i, degree in enumerate([1] + degrees):  
+    m, r, p = metrics[i]  
+    print(f"{degree}\t{m:.2f}\t\t{r:.2f}\t\t{p:.2f}")  
+
+inflection = int(3.5 * 7 * 24)  
+xa, ya = x[:inflection], y[:inflection]  
+xb, yb = x[inflection:], y[inflection:]  
+
+fa = np.poly1d(np.polyfit(xa, ya, 1))  
+fb = np.poly1d(np.polyfit(xb, yb, 1))  
+total_error = error(fa, xa, ya) + error(fb, xb, yb)  
+print(f"Total error of piecewise linear model: {total_error:.2f}")  
+
+def piecewise_model(x_val):  
+    if isinstance(x_val, np.ndarray):  
+        return np.where(x_val < inflection, fa(x_val), fb(x_val))  
+    else:  
+        return fa(x_val) if x_val < inflection else fb(x_val)  
+
+plot_web_traffic(x, y, [piecewise_model], title="Piecewise Linear Model")  
+
+degrees = [1, 2, 3, 5, 10]  
+models_b = []  
+errors_b = []  
+metrics_b = []  
+for degree in degrees:  
+    model = np.poly1d(np.polyfit(xb, yb, degree))  
+    models_b.append(model)  
+    err = error(model, xb, yb)  
+    errors_b.append(err)  
+    m, r, p = print_model_metrics(model, xb, yb, f"{degree}th-Degree Polynomial (Post-Inflection)")  
+    metrics_b.append((m, r, p))  
+    print("-" * 40)  
+
+plot_web_traffic(xb, yb, models_b, title="Polynomial Models on Post-Inflection Data")  
+
+test_size = 7 * 24  
+train_size = len(xb) - test_size  
+xtrain, ytrain = xb[:train_size], yb[:train_size]  
+xtest, ytest = xb[train_size:], yb[train_size:]  
+
+degrees = [1, 2, 3, 5, 10]  
+train_errors = []  
+test_errors = []  
+best_test_error = float('inf')  
+best_model = None  
+best_degree = 0  
+
+for degree in degrees:  
+    model = np.poly1d(np.polyfit(xtrain, ytrain, degree))  
+    train_err = error(model, xtrain, ytrain)  
+    test_err = error(model, xtest, ytest)  
+    train_errors.append(train_err)  
+    test_errors.append(test_err)  
+    if test_err < best_test_error:  
+        best_test_error = test_err  
+        best_model = model  
+        best_degree = degree  
+
+plt.figure(figsize=(10, 6))  
+plt.plot(degrees, train_errors, 'o-', label='Training Error')  
+plt.plot(degrees, test_errors, 's-', label='Test Error')  
+plt.title('Training vs. Test Error by Polynomial Degree')  
+plt.xlabel('Polynomial Degree')  
+plt.ylabel('Error Value')  
+plt.legend()  
+plt.grid(True)  
+plt.show()  
+
+print(f"\nBest Model: {best_degree}th-degree polynomial")  
+print(f"Best Test Error: {best_test_error:.2f}")  
+
+final_degree = 3  
+final_model = np.poly1d(np.polyfit(xb, yb, final_degree))  
+final_error = error(final_model, xb, yb)  
+print(f"Final Model Error: {final_error:.2f}")  
+plot_web_traffic(x, y, [final_model], xlim=(0, x[-1] + 2*7*24), show_confidence=True, title="Final Forecast Model (3rd-Degree)")  
+
+target_capacity = 100000  
+equation = lambda x: final_model(x) - target_capacity  
+start_guess = x[-1]  
+hours_reached = fsolve(equation, start_guess)[0]  
+weeks_reached = hours_reached / (7 * 24)  
+weeks_remaining = (hours_reached - x[-1]) / (7 * 24)  
+
+print(f"Estimated time to reach {target_capacity} hits/hour: {weeks_reached:.2f} weeks")  
+print(f"Time remaining until capacity limit: {weeks_remaining:.2f} weeks")  
+
+residuals = yb - final_model(xb)  
+std_dev = np.std(residuals)  
+confidence_levels = [68, 95, 99.7]  
+confidence_intervals = []  
+
+for cl in confidence_levels:  
+    z = 1  # for simplicity  
+    margin_of_error = z * std_dev  
+    upper_eq = lambda x: final_model(x) + margin_of_error - target_capacity  
+    lower_eq = lambda x: final_model(x) - margin_of_error - target_capacity  
+    upper_hours = fsolve(upper_eq, start_guess)[0]  
+    lower_hours = fsolve(lower_eq, start_guess)[0]  
+    confidence_intervals.append((lower_hours / (7*24), upper_hours / (7*24)))  
+
+plt.figure(figsize=(10, 6))  
+plt.axhline(y=target_capacity, color='r', linestyle='-', label='Capacity Limit')  
+plt.axvline(x=weeks_reached, color='g', linestyle='-', label='Forecast Time')  
+for i, (lw, uw) in enumerate(confidence_intervals):  
+    plt.axvspan(lw, uw, alpha=0.2, label=f'{confidence_levels[i]}% Confidence Interval')  
+plt.title('Confidence Intervals for Capacity Limit Forecast')  
+plt.xlabel('Time (Weeks)')  
+plt.ylabel('Hits/Hour')  
+plt.grid(True)  
+plt.legend()  
+plt.tight_layout()  
 plt.show()
-
-
-
-
-
-
-# Final model training (random forest on seeds dataset)  
-rf_final = RandomForestClassifier(n_estimators=200, random_state=42)  
-rf_final.fit(X_seeds, y_seeds)  
-print("Final Model Trained on Full Dataset.") 
