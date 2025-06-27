@@ -1,6 +1,7 @@
 
-# 1: 安装/升级所有包
+# Step 1: Install/Upgrade all packages
 #!pip install --upgrade transformers datasets accelerate evaluate fsspec -q
+
 import transformers
 import datasets
 from google.colab import drive
@@ -14,53 +15,54 @@ from transformers import (
 import evaluate
 import os
 
-print("--- 库已安装，版本:", transformers.__version__, "---")
+print("--- Libraries installed, version:", transformers.__version__, "---")
 
-
-# 2: 挂载 Drive
+# Step 2: Mount Google Drive
 drive.mount('/content/drive')
-print("--- 已挂载 Google Drive ---")
+print("--- Google Drive mounted ---")
 
-
-# 3: 设置路径、加载数据、并提前准备好标签信息
-output_model_dir = "/content/drive/MyDrive/MyDissertationModels/roberta-goemotions-finetuned"
+# Step 3: Set up paths, load data, and prepare label info
+# Use a fresh folder name for the output to avoid conflicts
+output_model_dir = "/content/drive/MyDrive/MyDissertationModels/roberta-goemotions-final-run2" 
 os.makedirs(output_model_dir, exist_ok=True)
 
-# 加载原始数据集
+# Load the original dataset
 dataset = datasets.load_dataset("go_emotions", "simplified")
+# Load the tokenizer
 tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 
-# 在数据处理前，先从原始数据集中获取标签信息
+# Prepare label information before data mapping
 labels = dataset["train"].features["labels"].feature.names
 num_labels = len(labels)
 id2label = {i: label for i, label in enumerate(labels)}
 label2id = {label: i for i, label in enumerate(labels)}
-print("--- 已提前准备好标签信息 ---")
+print("--- Label information prepared ---")
 
 
-# 4: 定义预处理函数并应用它
+# Step 4: Define and apply the preprocessing function
 def preprocess_function(examples):
-    # 对文本进行tokenize
+    # Tokenize the text
     tokenized_inputs = tokenizer(examples["text"], truncation=True, padding="max_length", max_length=128)
-    # 从标签列表中提取出单个标签数字
+    # Extract the single label integer from the list of labels
     tokenized_inputs["labels"] = [label[0] for label in examples["labels"]]
     return tokenized_inputs
- # remove_columns以避免后续冲突
+
+# Apply preprocessing and remove original columns to avoid conflicts
 tokenized_datasets = dataset.map(preprocess_function, batched=True, remove_columns=['text', 'id'])
-print("--- 数据已加载和处理 (已修正标签格式) ---")
+print("--- Data loaded and processed (label format corrected) ---")
 
 
-# 5: 加载模型 (使用提前准备好的标签信息)
+# Step 5: Load the base model (using prepared label info)
 model = AutoModelForSequenceClassification.from_pretrained(
     "roberta-base",
     num_labels=num_labels,
     id2label=id2label,
     label2id=label2id
 )
-print("--- 模型已加载 ---")
+print("--- Base model loaded ---")
 
 
-# 6: 定义评估指标和训练参数
+# Step 6: Define evaluation metrics and training arguments
 accuracy_metric = evaluate.load("accuracy")
 f1_metric = evaluate.load("f1")
 def compute_metrics(eval_pred):
@@ -70,7 +72,7 @@ def compute_metrics(eval_pred):
     f1 = f1_metric.compute(predictions=predictions, references=labels, average="weighted")
     return {"accuracy": accuracy["accuracy"], "f1": f1["f1"]}
 
-# 配置训练参数
+# Configure training arguments
 training_args = TrainingArguments(
     output_dir=output_model_dir,
     learning_rate=2e-5,
@@ -84,20 +86,19 @@ training_args = TrainingArguments(
     push_to_hub=False,
     report_to="none",
 )
-print("--- 训练参数已配置 ---")
+print("--- Training arguments configured ---")
 
 
-# 7: 实例化 Trainer 并开始训练
+# Step 7: Instantiate the Trainer and start training
 trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=tokenized_datasets["train"],
     eval_dataset=tokenized_datasets["validation"],
-    tokenizer=tokenizer,
+    tokenizer=tokenizer,  # Pass the tokenizer to save it with the model
     compute_metrics=compute_metrics,
 )
 
-print("\n****** 即将开始模型训练！******")
+print("\n****** Starting model training! ******")
 trainer.train()
-
-print("\n****** 训练完成！******")
+print("\n****** Training complete! ******")

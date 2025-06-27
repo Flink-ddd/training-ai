@@ -3,17 +3,21 @@ import matplotlib.pyplot as plt
 import tempfile
 import os
 from transformers import pipeline
-import torch # 导入torch库
+import torch # Import the torch library
 
-# 1. 定义你本地模型的路径 (./ 表示当前目录)
+# --- Main Configuration ---
+
+# 1. Define the path to your local model folder
+#    Remember to point this to the correct checkpoint folder after training
 model_path = "./roberta-goemotions-finetuned/checkpoint-4071"
 
-# 2. 自动检测是否有可用的GPU
-#    如果有NVIDIA GPU (CUDA)，则使用GPU (device=0)，否则使用CPU (device=-1)
-device = 0 if torch.cuda.is_available() else -1
-print(f"使用的设备: {'GPU' if device == 0 else 'CPU'}")
 
-# 3. 加载你本地的模型
+# 2. Automatically detect if a GPU is available
+#    Use GPU (device=0) if available (NVIDIA CUDA), otherwise use CPU (device=-1)
+device = 0 if torch.cuda.is_available() else -1
+print(f"Using device: {'GPU' if device == 0 else 'CPU'}")
+
+# 3. Load your local model via the pipeline
 classifier = pipeline(
     "text-classification",
     model=model_path,
@@ -21,10 +25,10 @@ classifier = pipeline(
     device=device
 )
 
-# Define emotion categories
-# 注意：这里的标签顺序和名称需要和你训练时完全一致
-# GoEmotions有27个标签 + 1个neutral。这里为了演示，可以先用主要的几个。
-# 如果需要显示所有28个，可以把它们都列出来。
+# --- End of Configuration ---
+
+
+# Emotion labels from the GoEmotions dataset
 emotion_labels = [
     'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
     'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
@@ -36,7 +40,7 @@ emotion_labels = [
 
 # Process input text and obtain emotion classification
 def analyze_sentiment(text):
-    # pipeline现在会返回一个包含所有标签概率的列表
+    # The pipeline now returns a list containing probabilities for all labels
     results = classifier(text)[0]
     probabilities = {res['label']: res['score'] for res in results}
     return probabilities
@@ -44,7 +48,7 @@ def analyze_sentiment(text):
 # Generate a probability distribution bar chart
 def plot_probabilities(probabilities):
     top_k = 15
-    # 按概率从高到低排序
+    # Sort probabilities from highest to lowest
     sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)[:top_k]
     
     if not sorted_probs:
@@ -57,9 +61,9 @@ def plot_probabilities(probabilities):
     plt.xlabel("Probability")
     plt.title("Emotion Classification Probabilities")
     plt.xlim(0, 1)
-    plt.gca().invert_yaxis()
+    plt.gca().invert_yaxis() # Display highest probability at the top
 
-    plt.tight_layout()
+    plt.tight_layout() # Adjust spacing to prevent overlap
 
     temp_dir = tempfile.gettempdir()
     image_path = os.path.join(temp_dir, "emotion_probabilities.png")
@@ -70,12 +74,14 @@ def plot_probabilities(probabilities):
 
 # Gradio interface function
 def gradio_sentiment_analysis(text):
+    # Handle empty input
     if not text.strip():
-        return "请输入文本", {}, None # 处理空输入
+        return "Please enter some text", {}, None 
 
     probabilities = analyze_sentiment(text)
     image_path = plot_probabilities(probabilities)
 
+    # Determine the predicted emotion with the highest probability
     predicted_emotion = max(probabilities, key=probabilities.get)
 
     return predicted_emotion, probabilities, image_path
