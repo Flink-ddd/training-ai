@@ -13,7 +13,8 @@ llm = LLM(
     max_model_len=2048,
     max_num_seqs=100,             # <-- 采用了原作者的参数
     tensor_parallel_size=1,
-    enforce_eager=True            # <-- 这是我们能进断点的关键，必须保留！
+    enforce_eager=True,      # <-- 这是我们能进断点的关键，必须保留！
+    gpu_memory_utilization=0.8           
 )
 print("--- VLLM 引擎初始化完毕 ---")
 
